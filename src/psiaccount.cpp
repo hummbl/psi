@@ -3713,11 +3713,30 @@ void PsiAccount::eventFromXml(PsiEvent* e)
 	handleEvent(e, FromXml);
 }
 
+bool denyIcqAuthRequests(AuthEvent* e)
+{
+	if (e->authType() == "subscribe" && e->from().domain().startsWith("icq.")) {
+		e->account()->dj_deny(e->from());
+		return true;
+	}
+
+	return false;
+}
+
 // handle an incoming event
 void PsiAccount::handleEvent(PsiEvent* e, ActivationType activationType)
 {
 	if ( e ) {
 		setEnabled();
+	}
+
+	if (e->type() == PsiEvent::Auth && activationType == IncomingStanza) {
+		AuthEvent* authEvent = static_cast<AuthEvent*>(e);
+		if (denyIcqAuthRequests(authEvent)) {
+			eventQueue()->dequeue(e);
+			delete e;
+			return;
+		}
 	}
 
 	bool doPopup    = false;
